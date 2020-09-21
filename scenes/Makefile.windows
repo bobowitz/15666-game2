@@ -3,11 +3,27 @@ BLENDER="C:\Program Files\Blender Foundation\Blender 2.90\blender.exe"
 DIST=../dist
 
 all : \
-    $(DIST)/hexapod.pnct \
-    $(DIST)/hexapod.scene \
+    $(DIST)/car.pnct \
+    $(DIST)/car.scene \
+    $(DIST)/road.pnct \
+    $(DIST)/road.scene \
+    $(DIST)/block.pnct \
+    $(DIST)/block.scene \
 
-$(DIST)/hexapod.scene : hexapod.blend export-scene.py
-    $(BLENDER) --background --python export-scene.py -- "hexapod.blend:Main" "$(DIST)/hexapod.scene"
+$(DIST)/car.scene : car.blend export-scene.py
+    $(BLENDER) --background --python export-scene.py -- "car.blend:Main" "$(DIST)/car.scene"
 
-$(DIST)/hexapod.pnct : hexapod.blend export-meshes.py
-    $(BLENDER) --background --python export-meshes.py -- "hexapod.blend:Main" "$(DIST)/hexapod.pnct" 
+$(DIST)/car.pnct : car.blend export-meshes.py
+    $(BLENDER) --background --python export-meshes.py -- "car.blend:Main" "$(DIST)/car.pnct" 
+
+$(DIST)/road.scene : road.blend export-scene.py
+    $(BLENDER) --background --python export-scene.py -- "road.blend:Main" "$(DIST)/road.scene"
+
+$(DIST)/road.pnct : road.blend export-meshes.py
+    $(BLENDER) --background --python export-meshes.py -- "road.blend:Main" "$(DIST)/road.pnct" 
+
+$(DIST)/block.scene : block.blend export-scene.py
+    $(BLENDER) --background --python export-scene.py -- "block.blend:Main" "$(DIST)/block.scene"
+
+$(DIST)/block.pnct : block.blend export-meshes.py
+    $(BLENDER) --background --python export-meshes.py -- "block.blend:Main" "$(DIST)/block.pnct" 

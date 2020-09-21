@@ -11,49 +11,182 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <random>
+#include <string>
 
-GLuint hexapod_meshes_for_lit_color_texture_program = 0;
-Load< MeshBuffer > hexapod_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-	MeshBuffer const *ret = new MeshBuffer(data_path("hexapod.pnct"));
-	hexapod_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+GLuint car_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > car_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("car.pnct"));
+	car_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
-Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
-	return new Scene(data_path("hexapod.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
-		Mesh const &mesh = hexapod_meshes->lookup(mesh_name);
-
-		scene.drawables.emplace_back(transform);
-		Scene::Drawable &drawable = scene.drawables.back();
-
-		drawable.pipeline = lit_color_texture_program_pipeline;
-
-		drawable.pipeline.vao = hexapod_meshes_for_lit_color_texture_program;
-		drawable.pipeline.type = mesh.type;
-		drawable.pipeline.start = mesh.start;
-		drawable.pipeline.count = mesh.count;
-
-	});
+GLuint road_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > road_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("road.pnct"));
+	road_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+	return ret;
 });
 
-PlayMode::PlayMode() : scene(*hexapod_scene) {
-	//get pointers to leg for convenience:
-	for (auto &transform : scene.transforms) {
-		if (transform.name == "Hip.FL") hip = &transform;
-		else if (transform.name == "UpperLeg.FL") upper_leg = &transform;
-		else if (transform.name == "LowerLeg.FL") lower_leg = &transform;
+GLuint block_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > block_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("block.pnct"));
+	block_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+	return ret;
+});
+
+PlayMode::PlayMode() {
+
+	// load drawables
+	for (int x = 0; x < (BLOCK_LENGTH + 1) * MAP_SIZE + 1; x++) {
+		for (int y = 0; y < (BLOCK_LENGTH + 1) * MAP_SIZE + 1; y++) {
+			if (x % (BLOCK_LENGTH + 1) != 0 && y % (BLOCK_LENGTH + 1) != 0) {
+				scene.load(data_path("block.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+					Mesh const &mesh = block_meshes->lookup(mesh_name);
+
+					if (mesh_name == "block") {
+						transform->position = transform->position + glm::vec3(x, y, 0.0f) * ROAD_WIDTH + glm::vec3(1.0f, 1.0f, 0.0f) * 0.5f * ROAD_WIDTH;
+						transform->rotation = glm::normalize(glm::angleAxis(glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+					}
+					scene.drawables.emplace_back(transform);
+					Scene::Drawable &drawable = scene.drawables.back();
+
+					drawable.pipeline = lit_color_texture_program_pipeline;
+
+					drawable.pipeline.vao = block_meshes_for_lit_color_texture_program;
+					drawable.pipeline.type = mesh.type;
+					drawable.pipeline.start = mesh.start;
+					drawable.pipeline.count = mesh.count;
+				});
+			}
+			else {
+				scene.load(data_path("road.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+					Mesh const &mesh = road_meshes->lookup(mesh_name);
+					
+					if (mesh_name == "road" || x % (BLOCK_LENGTH + 1) != 0 || y % (BLOCK_LENGTH + 1) != 0) {
+						if (mesh_name == "road") {
+							transform->position = transform->position + glm::vec3(x, y, 0.0f) * ROAD_WIDTH + glm::vec3(1.0f, 1.0f, 0.0f) * 0.5f * ROAD_WIDTH;
+							if (y % (BLOCK_LENGTH + 1) != 0)
+								transform->rotation = glm::normalize(glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
+						}
+						scene.drawables.emplace_back(transform);
+						Scene::Drawable &drawable = scene.drawables.back();
+
+						drawable.pipeline = lit_color_texture_program_pipeline;
+
+						drawable.pipeline.vao = road_meshes_for_lit_color_texture_program;
+						drawable.pipeline.type = mesh.type;
+						drawable.pipeline.start = mesh.start;
+						drawable.pipeline.count = mesh.count;
+					}
+				});
+			}
+		}
 	}
-	if (hip == nullptr) throw std::runtime_error("Hip not found.");
-	if (upper_leg == nullptr) throw std::runtime_error("Upper leg not found.");
-	if (lower_leg == nullptr) throw std::runtime_error("Lower leg not found.");
 
-	hip_base_rotation = hip->rotation;
-	upper_leg_base_rotation = upper_leg->rotation;
-	lower_leg_base_rotation = lower_leg->rotation;
+	for (int i = 0; i < CARS; i++) {
+		scene.load(data_path("car.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+			Mesh const &mesh = car_meshes->lookup(mesh_name);
 
-	//get pointer to camera for convenience:
-	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
-	camera = &scene.cameras.front();
+			if (mesh_name == "body") {
+				transform->name = "Car" + std::to_string(i);
+			}
+
+			scene.drawables.emplace_back(transform);
+			Scene::Drawable &drawable = scene.drawables.back();
+
+			drawable.pipeline = lit_color_texture_program_pipeline;
+
+			drawable.pipeline.vao = car_meshes_for_lit_color_texture_program;
+			drawable.pipeline.type = mesh.type;
+			drawable.pipeline.start = mesh.start;
+			drawable.pipeline.count = mesh.count;
+		});
+	}
+
+	// create street data structure
+
+	intersections.reserve((MAP_SIZE + 1) * (MAP_SIZE + 1));
+	street_ends.reserve((MAP_SIZE + 1) * (MAP_SIZE + 1) * 4);
+	for (int x = 0; x < MAP_SIZE + 1; x++) {
+		for (int y = 0; y < MAP_SIZE + 1; y++) {
+			glm::vec2 intersection_pos = glm::vec2(x, y) * (float) (ROAD_WIDTH * (BLOCK_LENGTH + 1));
+			glm::vec2 intersection_size(ROAD_WIDTH, ROAD_WIDTH);
+
+			intersections.emplace_back();
+			Intersection *intersection = &intersections.back();
+
+			intersection->bb_pos = intersection_pos;
+			intersection->bb_size = intersection_size;
+
+			// left street end
+			if (x > 0) {
+				street_ends.emplace_back();
+				StreetEnd *e = &street_ends.back();
+				e->stop_bb_pos = intersection_pos + glm::vec2(-STOP_WIDTH, 0.0f);
+				e->stop_bb_size = glm::vec2(STOP_WIDTH, 0.5f * ROAD_WIDTH);
+				e->go_target = intersection_pos + glm::vec2(-STOP_WIDTH * 0.5f, 0.75f * ROAD_WIDTH);
+				e->go_direction = glm::vec2(-1.0f, 0.0f);
+				e->intersection = intersection;
+				intersection->ends.push_back(e);
+			}
+			// right street end
+			if (x < MAP_SIZE) {
+				street_ends.emplace_back();
+				StreetEnd *e = &street_ends.back();
+				e->stop_bb_pos = intersection_pos + glm::vec2(intersection_size.x, 0.5f * ROAD_WIDTH);
+				e->stop_bb_size = glm::vec2(STOP_WIDTH, 0.5f * ROAD_WIDTH);
+				e->go_target = intersection_pos + glm::vec2(intersection_size.x + STOP_WIDTH * 0.5f, 0.25f * ROAD_WIDTH);
+				e->go_direction = glm::vec2(1.0f, 0.0f);
+				e->intersection = intersection;
+				intersection->ends.push_back(e);
+			}
+			// bottom street end
+			if (y > 0) {
+				street_ends.emplace_back();
+				StreetEnd *e = &street_ends.back();
+				e->stop_bb_pos = intersection_pos + glm::vec2(0.5f * ROAD_WIDTH, -STOP_WIDTH);
+				e->stop_bb_size = glm::vec2(0.5f * ROAD_WIDTH, STOP_WIDTH);
+				e->go_target = intersection_pos + glm::vec2(0.25f * ROAD_WIDTH, -STOP_WIDTH * 0.5f);
+				e->go_direction = glm::vec2(0.0f, -1.0f);
+				e->intersection = intersection;
+				intersection->ends.push_back(e);
+			}
+			// top street end
+			if (y < MAP_SIZE) {
+				street_ends.emplace_back();
+				StreetEnd *e = &street_ends.back();
+				e->stop_bb_pos = intersection_pos + glm::vec2(0.0f, intersection_size.y);
+				e->stop_bb_size = glm::vec2(0.5f * ROAD_WIDTH, STOP_WIDTH);
+				e->go_target = intersection_pos + glm::vec2(0.75f * ROAD_WIDTH, intersection_size.y + STOP_WIDTH * 0.5f);
+				e->go_direction = glm::vec2(0.0f, 1.0f);
+				e->intersection = intersection;
+				intersection->ends.push_back(e);
+			}
+		}
+	}
+
+	// spawn car objects
+
+	for (int i = 0; i < CARS; i++) {
+		cars.emplace_back();
+		Car *car = &cars.back();
+
+		car->bb_pos = glm::vec2(ROAD_WIDTH * 0.75f, ROAD_WIDTH * 3.5f) - car->bb_size * 0.5f;
+		car->vel = glm::vec2(0.0f, car->VELOCITY);
+	}
+	for (auto &transform : scene.transforms) {
+		if (transform.name.substr(0, 3) == "Car") {
+			int ind = stoi(transform.name.substr(3));
+			cars[ind].transform = &transform;
+		}
+	}
+
+	//create camera
+	Scene::Transform *t = new Scene::Transform;
+	t->position = glm::vec3(0.0f, 0.0f, 75.0f);
+	t->rotation = glm::normalize(glm::angleAxis(glm::radians(CAMERA_ANGLE), glm::vec3(1.0f, 0.0f, 0.0f)));
+	scene.cameras.emplace_back(t);
+	camera = &scene.cameras.back();
 }
 
 PlayMode::~PlayMode() {
@@ -96,24 +229,6 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			down.pressed = false;
 			return true;
 		}
-	} else if (evt.type == SDL_MOUSEBUTTONDOWN) {
-		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
-			SDL_SetRelativeMouseMode(SDL_TRUE);
-			return true;
-		}
-	} else if (evt.type == SDL_MOUSEMOTION) {
-		if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
-			glm::vec2 motion = glm::vec2(
-				evt.motion.xrel / float(window_size.y),
-				-evt.motion.yrel / float(window_size.y)
-			);
-			camera->transform->rotation = glm::normalize(
-				camera->transform->rotation
-				* glm::angleAxis(-motion.x * camera->fovy, glm::vec3(0.0f, 1.0f, 0.0f))
-				* glm::angleAxis(motion.y * camera->fovy, glm::vec3(1.0f, 0.0f, 0.0f))
-			);
-			return true;
-		}
 	}
 
 	return false;
@@ -122,27 +237,35 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 void PlayMode::update(float elapsed) {
 
 	//slowly rotates through [0,1):
-	wobble += elapsed / 10.0f;
-	wobble -= std::floor(wobble);
+	// wobble += elapsed / 10.0f;
+	// wobble -= std::floor(wobble);
 
-	hip->rotation = hip_base_rotation * glm::angleAxis(
-		glm::radians(5.0f * std::sin(wobble * 2.0f * float(M_PI))),
-		glm::vec3(0.0f, 1.0f, 0.0f)
-	);
-	upper_leg->rotation = upper_leg_base_rotation * glm::angleAxis(
-		glm::radians(7.0f * std::sin(wobble * 2.0f * 2.0f * float(M_PI))),
-		glm::vec3(0.0f, 0.0f, 1.0f)
-	);
-	lower_leg->rotation = lower_leg_base_rotation * glm::angleAxis(
-		glm::radians(10.0f * std::sin(wobble * 3.0f * 2.0f * float(M_PI))),
-		glm::vec3(0.0f, 0.0f, 1.0f)
-	);
+	// hip->rotation = hip_base_rotation * glm::angleAxis(
+	// 	glm::radians(5.0f * std::sin(wobble * 2.0f * float(M_PI))),
+	// 	glm::vec3(0.0f, 1.0f, 0.0f)
+	// );
+	// upper_leg->rotation = upper_leg_base_rotation * glm::angleAxis(
+	// 	glm::radians(7.0f * std::sin(wobble * 2.0f * 2.0f * float(M_PI))),
+	// 	glm::vec3(0.0f, 0.0f, 1.0f)
+	// );
+	// lower_leg->rotation = lower_leg_base_rotation * glm::angleAxis(
+	// 	glm::radians(10.0f * std::sin(wobble * 3.0f * 2.0f * float(M_PI))),
+	// 	glm::vec3(0.0f, 0.0f, 1.0f)
+	// );
+
+	for (auto &intersection : intersections) {
+		intersection.update(elapsed);
+	}
+
+	for (auto &car : cars) {
+		car.update(elapsed, street_ends, cars);
+	}
 
 	//move camera:
 	{
 
 		//combine inputs into a move:
-		constexpr float PlayerSpeed = 30.0f;
+		constexpr float PlayerSpeed = 100.0f;
 		glm::vec2 move = glm::vec2(0.0f);
 		if (left.pressed && !right.pressed) move.x =-1.0f;
 		if (!left.pressed && right.pressed) move.x = 1.0f;
@@ -152,10 +275,12 @@ void PlayMode::update(float elapsed) {
 		//make it so that moving diagonally doesn't go faster:
 		if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
 
-		glm::mat4x3 frame = camera->transform->make_local_to_parent();
-		glm::vec3 right = frame[0];
+		//glm::mat4x3 frame = camera->transform->make_local_to_parent();
+		//glm::vec3 right = frame[0];
 		//glm::vec3 up = frame[1];
-		glm::vec3 forward = -frame[2];
+		//glm::vec3 forward = frame[1];
+		glm::vec3 right(1.0f, 0.0f, 0.0f);
+		glm::vec3 forward(0.0f, 1.0f, 0.0f);
 
 		camera->transform->position += move.x * right + move.y * forward;
 	}
@@ -190,26 +315,4 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
 
 	scene.draw(*camera);
-
-	{ //use DrawLines to overlay some text:
-		glDisable(GL_DEPTH_TEST);
-		float aspect = float(drawable_size.x) / float(drawable_size.y);
-		DrawLines lines(glm::mat4(
-			1.0f / aspect, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f
-		));
-
-		constexpr float H = 0.09f;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
-			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
-			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
-		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
-			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
-			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-	}
 }
