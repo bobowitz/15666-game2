@@ -1,8 +1,8 @@
-# (TODO: your game's title)
+# Pizza Delivery
 
-Author: (TODO: your name)
+Author: Alton Olson
 
-Design: (TODO: In two sentences or fewer, describe what is new and interesting about your game.)
+Design: You unicycle around a small city delivering pizzas (that you find on the street) to hungry customers, while trying not to get hit by traffic.
 
 Screen Shot:
 
@@ -10,9 +10,9 @@ Screen Shot:
 
 How To Play:
 
-(TODO: describe the controls and (if needed) goals/strategy.)
+WASD to move. The house you're delivering to is highlighted in red. The cars behave as if every intersection is a 4-way stop, but they won't stop for you.
 
-Sources: (TODO: list a source URL for any assets you did not create yourself. Make sure you have a license for the asset.)
+Sources: I made everything from scratch in blender.
 
 This game was built with [NEST](NEST.md).
 
