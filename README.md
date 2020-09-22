@@ -10,7 +10,7 @@ Screen Shot:
 
 How To Play:
 
-WASD to move. The house you're delivering to is highlighted in red. The cars behave as if every intersection is a 4-way stop, but they won't stop for you.
+WASD to move. The house you're delivering to is highlighted in red. When multiple cars reach an intersection, they treat it as a 4-way stop. The cars will not stop for you though, so be careful.
 
 Sources: I made everything from scratch in blender.
 
