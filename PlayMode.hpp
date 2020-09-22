@@ -10,6 +10,7 @@
 #include "Intersection.hpp"
 #include "StreetEnd.hpp"
 #include "Car.hpp"
+#include "Player.hpp"
 
 struct PlayMode : Mode {
 	PlayMode();
@@ -20,13 +21,20 @@ struct PlayMode : Mode {
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 
+	void pick_pizza_loc();
+	void pick_pizza_delivery_loc();
+	void reset_level();
+
 	//----- constants -----
-	const float CAMERA_ANGLE = 35.0f;
+	const float CAMERA_ANGLE = 30.0f;
+	const float CAMERA_HEIGHT = 40.0f;
 	const int BLOCK_LENGTH = 4; // each block is 4 street tiles long
 	const int MAP_SIZE = 4; // 4 blocks
-	const float ROAD_WIDTH = 10.0f;
+	const float ROAD_WIDTH = 7.0f;
 	const float STOP_WIDTH = 0.5f;
-	const int CARS = 100;
+	const int CARS = 50;
+	const float PIZZA_DELIVERY_RADIUS = 7.0f;
+	const float PIZZA_PICKUP_RADIUS = 2.0f;
 
 	//----- game state -----
 
@@ -40,6 +48,19 @@ struct PlayMode : Mode {
 	std::vector<Intersection> intersections;
 	std::vector<StreetEnd> street_ends;
 	std::vector<Car> cars;
+	std::vector<Wall> walls;
+
+	Player player;
+
+	Scene::Transform *pizza_transform = nullptr;
+	Scene::Transform *pizza_block_transform = nullptr;
+
+	bool has_pizza = true;
+	glm::vec2 pizza_loc;
+	glm::vec2 pizza_delivery_loc;
+	int pizzas_delivered = 0;
+
+	bool game_over = false;
 
 	//local copy of the game scene (so code can change it during gameplay):
 	Scene scene;

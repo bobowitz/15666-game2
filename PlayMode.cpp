@@ -12,6 +12,12 @@
 
 #include <random>
 #include <string>
+#include <ctime>
+
+std::mt19937 mt_rand((unsigned int) time(NULL));
+
+// Because I modeled each object in its own file I have separate pnct/scene files for each object.
+// I don't think this is ideal, but it works :P
 
 GLuint car_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > car_meshes(LoadTagDefault, []() -> MeshBuffer const * {
@@ -31,6 +37,27 @@ GLuint block_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > block_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 	MeshBuffer const *ret = new MeshBuffer(data_path("block.pnct"));
 	block_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+	return ret;
+});
+
+GLuint bike_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > bike_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("unicycle_rider.pnct"));
+	bike_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+	return ret;
+});
+
+GLuint pizza_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > pizza_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("pizza.pnct"));
+	pizza_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+	return ret;
+});
+
+GLuint pizza_block_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > pizza_block_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("pizza_block.pnct"));
+	pizza_block_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
@@ -103,6 +130,48 @@ PlayMode::PlayMode() {
 		});
 	}
 
+	scene.load(data_path("unicycle_rider.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+		Mesh const &mesh = bike_meshes->lookup(mesh_name);
+
+		scene.drawables.emplace_back(transform);
+		Scene::Drawable &drawable = scene.drawables.back();
+
+		drawable.pipeline = lit_color_texture_program_pipeline;
+
+		drawable.pipeline.vao = bike_meshes_for_lit_color_texture_program;
+		drawable.pipeline.type = mesh.type;
+		drawable.pipeline.start = mesh.start;
+		drawable.pipeline.count = mesh.count;
+	});
+
+	scene.load(data_path("pizza.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+		Mesh const &mesh = pizza_meshes->lookup(mesh_name);
+
+		scene.drawables.emplace_back(transform);
+		Scene::Drawable &drawable = scene.drawables.back();
+
+		drawable.pipeline = lit_color_texture_program_pipeline;
+
+		drawable.pipeline.vao = pizza_meshes_for_lit_color_texture_program;
+		drawable.pipeline.type = mesh.type;
+		drawable.pipeline.start = mesh.start;
+		drawable.pipeline.count = mesh.count;
+	});
+
+	scene.load(data_path("pizza_block.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+		Mesh const &mesh = pizza_block_meshes->lookup(mesh_name);
+
+		scene.drawables.emplace_back(transform);
+		Scene::Drawable &drawable = scene.drawables.back();
+
+		drawable.pipeline = lit_color_texture_program_pipeline;
+
+		drawable.pipeline.vao = pizza_block_meshes_for_lit_color_texture_program;
+		drawable.pipeline.type = mesh.type;
+		drawable.pipeline.start = mesh.start;
+		drawable.pipeline.count = mesh.count;
+	});
+
 	// create street data structure
 
 	intersections.reserve((MAP_SIZE + 1) * (MAP_SIZE + 1));
@@ -165,31 +234,105 @@ PlayMode::PlayMode() {
 		}
 	}
 
-	// spawn car objects
+	// create walls
 
-	for (int i = 0; i < CARS; i++) {
-		cars.emplace_back();
-		Car *car = &cars.back();
+	// outer map walls
+	const float MAP_W = ((MAP_SIZE + 1) * BLOCK_LENGTH + 1) * ROAD_WIDTH;
+	const float MAP_H = ((MAP_SIZE + 1) * BLOCK_LENGTH + 1) * ROAD_WIDTH;
+	const float WALL_W = 10.0f;
+	walls.emplace_back(glm::vec2(0, -WALL_W), glm::vec2(MAP_W, WALL_W)); // bottom wall
+	walls.emplace_back(glm::vec2(0, MAP_H), glm::vec2(MAP_W, WALL_W)); // top wall
+	walls.emplace_back(glm::vec2(-WALL_W, 0), glm::vec2(WALL_W, MAP_H)); // left wall
+	walls.emplace_back(glm::vec2(MAP_W, 0), glm::vec2(WALL_W, MAP_H)); // right wall
 
-		car->bb_pos = glm::vec2(ROAD_WIDTH * 0.75f, ROAD_WIDTH * 3.5f) - car->bb_size * 0.5f;
-		car->vel = glm::vec2(0.0f, car->VELOCITY);
+	// building/city block walls
+	for (int x = 0; x < MAP_SIZE; x++) {
+		for (int y = 0; y < MAP_SIZE; y++) {
+			const glm::vec2 SIZE(BLOCK_LENGTH * ROAD_WIDTH, BLOCK_LENGTH * ROAD_WIDTH);
+			walls.emplace_back(glm::vec2((x * (BLOCK_LENGTH + 1) + 1) * ROAD_WIDTH, (y * (BLOCK_LENGTH + 1) + 1) * ROAD_WIDTH), SIZE);
+		}
 	}
+
+	// reset_level spawns player, resets score, and spawns cars
+
+	reset_level();
+
+	// link transforms to their objects
+
 	for (auto &transform : scene.transforms) {
 		if (transform.name.substr(0, 3) == "Car") {
 			int ind = stoi(transform.name.substr(3));
 			cars[ind].transform = &transform;
 		}
+		if (transform.name == "seat") {
+			player.transform = &transform;
+		}
+		if (transform.name == "crust") {
+			pizza_transform = &transform;
+		}
+		if (transform.name == "pizza_block") {
+			pizza_block_transform = &transform;
+		}
 	}
+	if (player.transform == nullptr) throw std::runtime_error("couldn't find player transform");
+	if (pizza_transform == nullptr) throw std::runtime_error("couldn't find pizza transform");
+	if (pizza_block_transform == nullptr) throw std::runtime_error("couldn't find pizza block transform");
 
 	//create camera
 	Scene::Transform *t = new Scene::Transform;
-	t->position = glm::vec3(0.0f, 0.0f, 75.0f);
+	t->position = glm::vec3(0.0f, 0.0f, CAMERA_HEIGHT);
 	t->rotation = glm::normalize(glm::angleAxis(glm::radians(CAMERA_ANGLE), glm::vec3(1.0f, 0.0f, 0.0f)));
 	scene.cameras.emplace_back(t);
 	camera = &scene.cameras.back();
+
+	pick_pizza_delivery_loc();
+	pick_pizza_loc();
 }
 
 PlayMode::~PlayMode() {
+}
+
+void PlayMode::pick_pizza_loc() {
+	float y = (float) (mt_rand() % (int) ((BLOCK_LENGTH + 1) * MAP_SIZE + 1)) * ROAD_WIDTH;
+	float x = (float) (mt_rand() % (int) (MAP_SIZE + 1)) * (BLOCK_LENGTH + 1) * ROAD_WIDTH + ROAD_WIDTH * 0.5f;
+
+	pizza_loc = glm::vec2(x, y);
+
+	pizza_transform->position = glm::vec3(pizza_loc.x, pizza_loc.y, 1.0f);
+}
+
+void PlayMode::pick_pizza_delivery_loc() {
+	float big_x = ((mt_rand() % MAP_SIZE) * (BLOCK_LENGTH + 1) + 1) * ROAD_WIDTH;
+	float little_x = (mt_rand() % BLOCK_LENGTH) * ROAD_WIDTH;
+
+	float big_y = ((mt_rand() % MAP_SIZE) * (BLOCK_LENGTH + 1) + 1) * ROAD_WIDTH;
+
+	pizza_delivery_loc = glm::vec2(big_x + little_x + 0.5 * ROAD_WIDTH, big_y + 0.5 * ROAD_WIDTH);
+
+	pizza_block_transform->position = glm::vec3(pizza_delivery_loc.x, pizza_delivery_loc.y, 2.0f);
+}
+
+void PlayMode::reset_level() {
+	player.bb_pos = glm::vec2(0.5f * ROAD_WIDTH * ((BLOCK_LENGTH + 1) * MAP_SIZE + 1), 0.5f * ROAD_WIDTH * ((BLOCK_LENGTH + 1) * MAP_SIZE + 1)) - player.bb_size * 0.5f;
+	game_over = false;
+	pizzas_delivered = 0;
+	has_pizza = true;
+
+	cars.clear();
+
+	for (int i = 0; i < CARS; i++) {
+		cars.emplace_back();
+		Car *car = &cars.back();
+
+		float y = (float) (mt_rand() % (int) ((BLOCK_LENGTH + 1) * MAP_SIZE + 1)) * ROAD_WIDTH;
+		float x = (float) (mt_rand() % (int) (MAP_SIZE + 1)) * (BLOCK_LENGTH + 1) * ROAD_WIDTH;
+		car->bb_pos = glm::vec2(ROAD_WIDTH * 0.75f + x, y) - car->bb_size * 0.5f;
+		car->vel = glm::vec2(0.0f, car->VELOCITY);
+	}
+
+	for (auto &intersection : intersections) {
+		intersection.cars.clear();
+	}
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
@@ -214,6 +357,9 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			down.downs += 1;
 			down.pressed = true;
 			return true;
+		} else if (evt.key.keysym.sym == SDLK_r) {
+			if (game_over) reset_level();
+			return true;
 		}
 	} else if (evt.type == SDL_KEYUP) {
 		if (evt.key.keysym.sym == SDLK_a) {
@@ -236,54 +382,36 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 void PlayMode::update(float elapsed) {
 
-	//slowly rotates through [0,1):
-	// wobble += elapsed / 10.0f;
-	// wobble -= std::floor(wobble);
+	if (!game_over) {
+		for (auto &intersection : intersections) {
+			intersection.update(elapsed);
+		}
 
-	// hip->rotation = hip_base_rotation * glm::angleAxis(
-	// 	glm::radians(5.0f * std::sin(wobble * 2.0f * float(M_PI))),
-	// 	glm::vec3(0.0f, 1.0f, 0.0f)
-	// );
-	// upper_leg->rotation = upper_leg_base_rotation * glm::angleAxis(
-	// 	glm::radians(7.0f * std::sin(wobble * 2.0f * 2.0f * float(M_PI))),
-	// 	glm::vec3(0.0f, 0.0f, 1.0f)
-	// );
-	// lower_leg->rotation = lower_leg_base_rotation * glm::angleAxis(
-	// 	glm::radians(10.0f * std::sin(wobble * 3.0f * 2.0f * float(M_PI))),
-	// 	glm::vec3(0.0f, 0.0f, 1.0f)
-	// );
+		for (auto &car : cars) {
+			car.update(elapsed, street_ends, cars);
+		}
 
-	for (auto &intersection : intersections) {
-		intersection.update(elapsed);
+		game_over = player.update(elapsed, Player::PlayerInput(up.pressed, down.pressed, left.pressed, right.pressed), cars, walls);
+		if (game_over) std::cout << "Game over. Press R to try again" << std::endl;
+
+		if (has_pizza) {
+			pizza_transform->position = player.get_center() + glm::vec3(0.0f, 0.0f, 7.2f);
+
+			if (glm::abs(pizza_delivery_loc.x - player.bb_pos.x) <= PIZZA_DELIVERY_RADIUS && glm::abs(pizza_delivery_loc.y - player.bb_pos.y) <= PIZZA_DELIVERY_RADIUS)
+			{
+				has_pizza = false;
+				pick_pizza_loc();
+				pick_pizza_delivery_loc();
+				pizzas_delivered++;
+				std::cout << "Pizzas delivered: " + std::to_string(pizzas_delivered) << std::endl;
+			}
+		} else if (glm::abs(pizza_loc.x - player.bb_pos.x) <= PIZZA_PICKUP_RADIUS && glm::abs(pizza_loc.y - player.bb_pos.y) <= PIZZA_PICKUP_RADIUS) {
+			has_pizza = true;
+		}
 	}
 
-	for (auto &car : cars) {
-		car.update(elapsed, street_ends, cars);
-	}
-
-	//move camera:
-	{
-
-		//combine inputs into a move:
-		constexpr float PlayerSpeed = 100.0f;
-		glm::vec2 move = glm::vec2(0.0f);
-		if (left.pressed && !right.pressed) move.x =-1.0f;
-		if (!left.pressed && right.pressed) move.x = 1.0f;
-		if (down.pressed && !up.pressed) move.y =-1.0f;
-		if (!down.pressed && up.pressed) move.y = 1.0f;
-
-		//make it so that moving diagonally doesn't go faster:
-		if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
-
-		//glm::mat4x3 frame = camera->transform->make_local_to_parent();
-		//glm::vec3 right = frame[0];
-		//glm::vec3 up = frame[1];
-		//glm::vec3 forward = frame[1];
-		glm::vec3 right(1.0f, 0.0f, 0.0f);
-		glm::vec3 forward(0.0f, 1.0f, 0.0f);
-
-		camera->transform->position += move.x * right + move.y * forward;
-	}
+	camera->transform->position.x = player.get_center().x;
+	camera->transform->position.y = player.get_center().y - ROAD_WIDTH * 3.0f;
 
 	//reset button press counters:
 	left.downs = 0;

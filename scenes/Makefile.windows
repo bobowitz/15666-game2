@@ -9,21 +9,53 @@ all : \
     $(DIST)/road.scene \
     $(DIST)/block.pnct \
     $(DIST)/block.scene \
+    $(DIST)/bike.pnct \
+    $(DIST)/bike.scene \
+    $(DIST)/unicycle_rider.pnct \
+    $(DIST)/unicycle_rider.scene \
+    $(DIST)/pizza.pnct \
+    $(DIST)/pizza.scene \
+    $(DIST)/pizza_block.pnct \
+    $(DIST)/pizza_block.scene \
 
 $(DIST)/car.scene : car.blend export-scene.py
     $(BLENDER) --background --python export-scene.py -- "car.blend:Main" "$(DIST)/car.scene"
 
 $(DIST)/car.pnct : car.blend export-meshes.py
-    $(BLENDER) --background --python export-meshes.py -- "car.blend:Main" "$(DIST)/car.pnct" 
+    $(BLENDER) --background --python export-meshes.py -- "car.blend:Main" "$(DIST)/car.pnct"
 
 $(DIST)/road.scene : road.blend export-scene.py
     $(BLENDER) --background --python export-scene.py -- "road.blend:Main" "$(DIST)/road.scene"
 
 $(DIST)/road.pnct : road.blend export-meshes.py
-    $(BLENDER) --background --python export-meshes.py -- "road.blend:Main" "$(DIST)/road.pnct" 
+    $(BLENDER) --background --python export-meshes.py -- "road.blend:Main" "$(DIST)/road.pnct"
 
 $(DIST)/block.scene : block.blend export-scene.py
     $(BLENDER) --background --python export-scene.py -- "block.blend:Main" "$(DIST)/block.scene"
 
 $(DIST)/block.pnct : block.blend export-meshes.py
-    $(BLENDER) --background --python export-meshes.py -- "block.blend:Main" "$(DIST)/block.pnct" 
+    $(BLENDER) --background --python export-meshes.py -- "block.blend:Main" "$(DIST)/block.pnct"
+
+$(DIST)/bike.scene : bike.blend export-scene.py
+    $(BLENDER) --background --python export-scene.py -- "bike.blend:Main" "$(DIST)/bike.scene"
+
+$(DIST)/bike.pnct : bike.blend export-meshes.py
+    $(BLENDER) --background --python export-meshes.py -- "bike.blend:Main" "$(DIST)/bike.pnct"
+
+$(DIST)/unicycle_rider.scene : unicycle_rider.blend export-scene.py
+    $(BLENDER) --background --python export-scene.py -- "unicycle_rider.blend:Main" "$(DIST)/unicycle_rider.scene"
+
+$(DIST)/unicycle_rider.pnct : unicycle_rider.blend export-meshes.py
+    $(BLENDER) --background --python export-meshes.py -- "unicycle_rider.blend:Main" "$(DIST)/unicycle_rider.pnct"
+
+$(DIST)/pizza.scene : pizza.blend export-scene.py
+    $(BLENDER) --background --python export-scene.py -- "pizza.blend:Main" "$(DIST)/pizza.scene"
+
+$(DIST)/pizza.pnct : pizza.blend export-meshes.py
+    $(BLENDER) --background --python export-meshes.py -- "pizza.blend:Main" "$(DIST)/pizza.pnct"
+
+$(DIST)/pizza_block.scene : pizza_block.blend export-scene.py
+    $(BLENDER) --background --python export-scene.py -- "pizza_block.blend:Main" "$(DIST)/pizza_block.scene"
+
+$(DIST)/pizza_block.pnct : pizza_block.blend export-meshes.py
+    $(BLENDER) --background --python export-meshes.py -- "pizza_block.blend:Main" "$(DIST)/pizza_block.pnct"

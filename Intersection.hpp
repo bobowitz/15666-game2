@@ -20,6 +20,10 @@ struct Intersection {
     bool entered_intersection = false;
     Car *in_intersection = nullptr;
 
+    float total_time = 0.0f;
+    float entered_intersection_time = 0.0f;
+    const float TIMEOUT = 3.0f;
+
     Intersection();
     void enqueue(Car *car);
     void update(float elapsed);

@@ -14,7 +14,9 @@ void Intersection::enqueue(Car *car) {
 }
 
 void Intersection::update(float elapsed) {
-    if (!car_in_intersection) {
+    total_time += elapsed;
+
+    if (!car_in_intersection || total_time - entered_intersection_time > TIMEOUT) {
         if (!cars.empty()) {
             in_intersection = cars.front();
             cars.erase(cars.begin());
@@ -28,6 +30,7 @@ void Intersection::update(float elapsed) {
                 car_in_intersection = false;
         } else {
             entered_intersection = true;
+            entered_intersection_time = total_time;
         }
     }
 }
